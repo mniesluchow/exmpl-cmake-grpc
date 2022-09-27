@@ -7,7 +7,7 @@
 #include <iostream>
 
 
-int main(int argc, char* argv[])
+int main()
 {
     // Setup request
     expcmake::NameQuerry query;

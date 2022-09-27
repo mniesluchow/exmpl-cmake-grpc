@@ -1,7 +1,8 @@
-find_package(protobuf CONFIG REQUIRED)
-find_package(gRPC CONFIG REQUIRED)
+find_package(PkgConfig REQUIRED)
+find_package(Protobuf REQUIRED)
 find_package(Threads)
 
+pkg_search_module(GRPC REQUIRED grpc)
 #
 # Protobuf/Grpc source files
 #
@@ -17,14 +18,14 @@ add_library(myproto ${PROTO_FILES})
 target_link_libraries(myproto
     PUBLIC
         protobuf::libprotobuf
-        gRPC::grpc
-        gRPC::grpc++
+        grpc
+        grpc++
 )
 target_include_directories(myproto PUBLIC ${CMAKE_CURRENT_BINARY_DIR})
 
 #
 # Compile protobuf and grpc files in myproto target to cpp
 #
-get_target_property(grpc_cpp_plugin_location gRPC::grpc_cpp_plugin LOCATION)
+find_program(grpc_cpp_plugin_location grpc_cpp_plugin)
 protobuf_generate(TARGET myproto LANGUAGE cpp)
 protobuf_generate(TARGET myproto LANGUAGE grpc GENERATE_EXTENSIONS .grpc.pb.h .grpc.pb.cc PLUGIN "protoc-gen-grpc=${grpc_cpp_plugin_location}")
