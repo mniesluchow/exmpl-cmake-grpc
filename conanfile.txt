@@ -1,0 +1,14 @@
+[requires]
+grpc/1.72.0
+protobuf/5.27.0
+
+[tool_requires]
+grpc/1.72.0
+protobuf/5.27.0
+
+[generators]
+CMakeDeps
+CMakeToolchain
+
+[layout]
+cmake_layout

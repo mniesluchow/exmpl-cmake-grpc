@@ -1,8 +1,8 @@
 find_package(PkgConfig REQUIRED)
 find_package(Protobuf REQUIRED)
+find_package(gRPC REQUIRED)
 find_package(Threads)
 
-pkg_search_module(GRPC REQUIRED grpc)
 #
 # Protobuf/Grpc source files
 #
@@ -18,8 +18,7 @@ add_library(myproto ${PROTO_FILES})
 target_link_libraries(myproto
     PUBLIC
         protobuf::libprotobuf
-        grpc
-        grpc++
+        grpc::grpc
 )
 target_include_directories(myproto PUBLIC ${CMAKE_CURRENT_BINARY_DIR})
 

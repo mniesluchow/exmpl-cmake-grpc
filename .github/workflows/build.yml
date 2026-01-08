@@ -1,41 +1,78 @@
-name: Build and Test
+name: Build and Release
+
 on:
   push:
-  schedule:
-    - cron:  '0 0 * * 0' # weekly
+    tags:
+      - 'v*'
+      - 'release-*'
+  pull_request:
+    branches: [ "master" ]
+    paths-ignore:
+      - '*.md'
 
 jobs:
   build:
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, ubuntu-22.04]
-        build_type: ['Release']
-        dep_version:
-          - abseil: heads/master
-            protobuf: heads/master
-            grpc: heads/master
-
+    runs-on: ubuntu-latest
     steps:
-      - name: Check out repository code
-        uses: actions/checkout@v2
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-      - name: Install Dependency Packages
+      - name: Install Python and Conan
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Install Conan
         run: |
-          sudo apt update
-          sudo apt install -y \
-          build-essential \
-          autoconf libtool pkg-config \
-          git cmake libc-ares-dev libre2-dev libssl-dev \
-          zlib1g-dev curl \
-          protobuf-compiler libprotobuf-dev \
-          protobuf-compiler-grpc libgrpc-dev libgrpc++-dev
+          pip install conan
+          conan profile detect --force
 
-      - name: "Configure"
+      - name: Conan Install
         run: |
-          mkdir build
-          sudo cmake -B build -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} .
+          conan install . -s build_type=Release --build=missing
 
-      - name: "Build"
-        run: sudo cmake --build build --config ${{ matrix.build_type }}
+      - name: CMake Build
+        run: |
+          cmake --preset conan-release
+          cmake --build --preset conan-release
+
+      - name: Stage files for upload
+        if: github.ref_type == 'tag'
+        run: |
+          mkdir -p staging
+          cp build/Release/client/client staging/
+          cp build/Release/server/server staging/
+
+      - name: Upload binaries
+        if: github.ref_type == 'tag'
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-assets
+          path: staging/
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.ref_type == 'tag'
+    permissions:
+      contents: write
+    steps:
+      - name: Download Binaries
+        uses: actions/download-artifact@v4
+        with:
+          name: release-assets
+          path: assets
+      - name: Rename Binary
+        run: |
+          mv assets/client "assets/grpc-client-linux-amd64-${{ github.ref_name }}"
+          mv assets/server "assets/grpc-server-linux-amd64-${{ github.ref_name }}"
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            assets/grpc-client-linux-amd64-${{ github.ref_name }}
+            assets/grpc-server-linux-amd64-${{ github.ref_name }}
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
